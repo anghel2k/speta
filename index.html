@@ -491,6 +491,7 @@ const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const ENDPOINT = SUPA_URL + "/functions/v1/ask";
 const STATUS_ENDPOINT = SUPA_URL + "/functions/v1/status";
 const ADMIN_ENDPOINT = SUPA_URL + "/functions/v1/admin-stats";
+const EMBED_ENDPOINT = SUPA_URL + "/functions/v1/embed-pending";
 const REVIEW_ENDPOINT = SUPA_URL + "/functions/v1/review";
 const SPETA_ENDPOINT = SUPA_URL + "/functions/v1/speta";
 const LAWS = ["Codul muncii","Codul civil","Codul penal"];
@@ -657,6 +658,23 @@ function renderModule(mod){
   else c.innerHTML=`<div class="soon-box"><div class="k">În curând</div><h2>${MOD_DEF[mod].t}</h2><p style="max-width:500px;margin:0 auto">${soonDesc[mod]}</p></div>`;
 }
 function statCard(t,v){ return `<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px"><div style="font-size:12px;color:var(--muted)">${t}</div><div style="font-size:26px;font-weight:800;color:var(--navy);margin-top:4px">${v==null?0:v}</div></div>`; }
+async function reindexAll(){
+  const btn=document.getElementById("reindexBtn"), st=document.getElementById("reindexStatus");
+  if(!btn) return; btn.disabled=true; let done=0;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) throw new Error("Sesiune expirată.");
+    for(let i=0;i<100;i++){
+      const r=await fetch(EMBED_ENDPOINT+"?token="+encodeURIComponent(session.access_token));
+      const d=await r.json();
+      if(d.error) throw new Error(d.message||d.error);
+      done+=d.processed||0;
+      st.textContent="Procesate acum: "+done+" · rămase: "+(d.remaining==null?"?":d.remaining);
+      if(!d.remaining){ st.textContent="Gata. Toate articolele au embeddings ("+done+" procesate acum)."; break; }
+    }
+  }catch(e){ st.textContent="Eroare: "+e.message; }
+  finally{ btn.disabled=false; loadStatus(); }
+}
 async function renderAdmin(){
   const c=document.getElementById("content");
   c.innerHTML='<div style="padding:26px"><span class="spinner"></span> Se încarcă panoul de administrare...</div>';
@@ -671,6 +689,7 @@ async function renderAdmin(){
     c.innerHTML=`<style>#adm table{width:100%;border-collapse:collapse;font-size:13px}#adm th{padding:10px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}#adm td{padding:10px;border-top:1px solid var(--line)}</style>
     <div id="adm" style="height:100%;overflow:auto">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">${cards}</div>
+      <div class="card" style="margin-bottom:18px"><h3 class="sec">Indexare</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">După ce imporți acte noi în baza de date, apasă aici ca să le generezi embeddings-urile.</p><button class="btn" id="reindexBtn" onclick="reindexAll()">Reindexează articolele noi</button><div id="reindexStatus" style="font-size:13px;color:var(--muted);margin-top:10px"></div></div>
       <div style="background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden"><table><thead><tr style="background:#f5f8ff"><th>Email</th><th>Rol</th><th>Plan</th><th>Utilizare/lună</th><th>Creat</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="color:var(--muted)">Niciun utilizator încă.</td></tr>'}</tbody></table></div>
     </div>`;
   }catch(e){ c.innerHTML='<div class="soon-box"><h2>Admin</h2><p class="err">'+esc(e.message)+'</p></div>'; }
