@@ -102,6 +102,9 @@
   #landing .b2{width:1050px;height:1050px;top:auto;bottom:-380px;left:-280px;right:auto;opacity:.5;filter:blur(28px);border-radius:50%;background:radial-gradient(circle, rgba(0,106,255,.6) 0%, rgba(58,88,229,.32) 34%, rgba(0,106,255,0) 66%);}
   #landing .brand{display:flex;align-items:center;gap:9px;color:var(--navy);}
   #landing .footer .brand{color:#fff;}
+  .betabar{position:relative;z-index:2;background:linear-gradient(135deg,#006AFF,#3A58E5);color:#fff;text-align:center;font-size:12.5px;padding:7px 16px;font-weight:500;}
+  .betabar b{font-weight:800;}
+  @media(max-width:760px){.betabar{font-size:11.5px;padding:6px 12px;}}
   #landing .logomark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#006AFF,#3A58E5);color:#fff;font-weight:800;font-size:19px;}
   #landing .eyebrow{-webkit-text-fill-color:#006AFF;color:#006AFF;background:none;}
   #landing .ltabs{display:flex;gap:4px;}
@@ -308,6 +311,7 @@
 <div id="landing">
   <div class="blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
   <div class="land-wrap">
+    <div class="betabar">SPETA este în <b>beta</b> — testăm cu utilizatori reali. Unele funcții și plata vor fi disponibile în curând.</div>
     <nav class="top"><div class="inner">
       <div style="display:flex;align-items:center;gap:26px">
         <div class="brand"><span class="logomark">S</span>SPETA</div>
@@ -513,6 +517,8 @@ const ADMIN_ENDPOINT = SUPA_URL + "/functions/v1/admin-stats";
 const EMBED_ENDPOINT = SUPA_URL + "/functions/v1/embed-pending";
 const REVIEW_ENDPOINT = SUPA_URL + "/functions/v1/review";
 const SPETA_ENDPOINT = SUPA_URL + "/functions/v1/speta";
+const DRAFT_ENDPOINT = SUPA_URL + "/functions/v1/draft";
+const HISTORY_ENDPOINT = SUPA_URL + "/functions/v1/history";
 const LAWS = ["Codul muncii","Codul civil","Codul penal"];
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 
@@ -571,7 +577,13 @@ function closeSidebar(){ const s=document.querySelector("#app .side"), o=documen
 function toggleUserDD(e){ e.stopPropagation(); const p=document.getElementById("userddPanel"); if(p) p.style.display=(p.style.display==="block"?"none":"block"); }
 document.addEventListener("click", e=>{ const p=document.getElementById("userddPanel"); if(p && p.style.display==="block" && !e.target.closest(".userdd")) p.style.display="none"; });
 async function enterApp(){ if(!profile) profile=await loadProfile(); if(profile) showApp(); else showAuth('login'); }
-function sendLandingContact(){ const em=(document.getElementById("lcEmail").value||"").trim(),su=(document.getElementById("lcSubject").value||"Contact SPETA").trim(),ms=(document.getElementById("lcMsg").value||"").trim(); window.location.href="mailto:office@speta.io?subject="+encodeURIComponent(su)+"&body="+encodeURIComponent(ms+"\n\nDe la: "+em); }
+async function sendLandingContact(){
+  const em=(document.getElementById("lcEmail").value||"").trim(),su=(document.getElementById("lcSubject").value||"Contact SPETA").trim(),ms=(document.getElementById("lcMsg").value||"").trim();
+  if(ms.length<2){ toast("Scrie un mesaj."); return; }
+  try{ const { error } = await sb.from("contact_messages").insert({ email:em, subiect:su, mesaj:ms, sursa:"landing:"+PORTAL }); if(error) throw error;
+    document.getElementById("lcEmail").value="";document.getElementById("lcSubject").value="";document.getElementById("lcMsg").value=""; toast("Mesaj trimis. Revenim curând."); }
+  catch(e){ toast("Nu am putut trimite. Scrie-ne la office@speta.io"); }
+}
 function landingTab(name){
   document.querySelectorAll("#landing .ltab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
   ["home","pricing","contact","faq"].forEach(v=>{ const el=document.getElementById("lv-"+v); if(el) el.style.display=(v===name?"block":"none"); });
@@ -672,23 +684,46 @@ async function logout(){ await sb.auth.signOut(); profile=null; showLanding(); }
 
 /* ---------- LEGAL / CONTACT ---------- */
 const LEGAL = {
-  terms:`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Termeni și condiții</h1><p class="updated">Ultima actualizare: iulie 2026. Draft, a se valida juridic.</p><h3>1. Despre SPETA</h3><p>SPETA este un instrument software profesional oferit de VELIUMIN SRL, destinat studenților la drept și profesioniștilor din domeniul juridic.</p><h3>2. Nu constituie consultanță juridică</h3><p>Rezultatele nu reprezintă consultanță juridică și nu creează o relație avocat client. Deciziile finale aparțin avocatului sau, după caz, instanțelor competente. Utilizatorul verifică sursele citate.</p><h3>3. Utilizare și planuri</h3><p>Planul pentru studenți include o cotă lunară de întrebări. Planurile profesionale se supun condițiilor comunicate la abonare.</p><h3>4. Proprietate intelectuală</h3><p>Platforma SPETA aparține VELIUMIN SRL.</p><h3>5. Limitarea răspunderii</h3><p>Serviciul este oferit ca atare. VELIUMIN SRL nu răspunde pentru decizii luate exclusiv pe baza rezultatelor.</p><h3>6. Contact</h3><p>office@speta.io</p>`,
-  privacy:`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Politica de confidențialitate</h1><p class="updated">Ultima actualizare: iulie 2026. Draft, a se valida juridic (GDPR).</p><h3>1. Operator</h3><p>VELIUMIN SRL prelucrează datele conform GDPR.</p><h3>2. Date prelucrate</h3><p>Email, rol/plan și conținutul introdus (întrebări), pentru furnizarea serviciului și aplicarea limitelor.</p><h3>3. Stocare</h3><p>Date găzduite în Uniunea Europeană, cu măsuri de securitate.</p><h3>4. Drepturi</h3><p>Acces, rectificare, ștergere, opoziție. Cereri la office@speta.io.</p><h3>5. Contact</h3><p>office@speta.io</p>`
+  terms:`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Termeni și condiții</h1><p class="updated">Ultima actualizare: iulie 2026. Document în versiune beta, a se valida juridic înainte de lansarea comercială.</p>
+<h3>1. Despre SPETA și operator</h3><p>SPETA este un instrument software profesional oferit de VELIUMIN SRL („VELIUMIN"), destinat studenților la drept și profesioniștilor din domeniul juridic. Prin utilizarea platformei, accepți acești termeni.</p>
+<h3>2. Nu constituie consultanță juridică</h3><p>SPETA este un instrument de asistență. Rezultatele nu reprezintă consultanță juridică și nu creează o relație avocat–client. Deciziile finale aparțin avocatului sau, după caz, instanțelor competente. Utilizatorul are obligația de a verifica sursele citate și textul oficial al actelor normative înainte de a se baza pe orice rezultat.</p>
+<h3>3. Statut beta</h3><p>Platforma este oferită în prezent în regim de testare (beta). Funcțiile, planurile și prețurile pot fi modificate, iar disponibilitatea poate fi întreruptă temporar. Crearea de conturi cu plată și procesarea plăților nu sunt încă active.</p>
+<h3>4. Conturi și utilizare</h3><p>Ești responsabil pentru păstrarea confidențialității datelor de autentificare și pentru activitatea din contul tău. Planul pentru studenți include o cotă lunară de întrebări; planurile profesionale se supun condițiilor comunicate la abonare. Este interzisă utilizarea automatizată abuzivă, revânzarea accesului sau extragerea în masă a conținutului.</p>
+<h3>5. Proprietate intelectuală</h3><p>Platforma SPETA, marca „SPETA", codul, designul și structura bazei de cunoștințe aparțin VELIUMIN SRL. Textele actelor normative provin din surse oficiale și rămân în domeniul public conform legii.</p>
+<h3>6. Limitarea răspunderii</h3><p>Serviciul este oferit „ca atare", fără garanția că rezultatele sunt complete, corecte sau actualizate la zi. În limita permisă de lege, VELIUMIN SRL nu răspunde pentru decizii, acțiuni sau prejudicii rezultate din utilizarea platformei, în special pentru decizii luate exclusiv pe baza rezultatelor, fără verificare profesională.</p>
+<h3>7. Modificări și încetare</h3><p>Putem actualiza acești termeni; versiunea în vigoare este cea publicată aici. Putem suspenda sau înceta accesul în caz de utilizare abuzivă.</p>
+<h3>8. Lege aplicabilă</h3><p>Acești termeni sunt guvernați de legea română. Litigiile se soluționează de instanțele competente de la sediul VELIUMIN SRL.</p>
+<h3>9. Contact</h3><p>office@speta.io</p>`,
+  privacy:`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Politica de confidențialitate</h1><p class="updated">Ultima actualizare: iulie 2026. Document în versiune beta, a se valida juridic (GDPR) înainte de lansarea comercială.</p>
+<h3>1. Operator de date</h3><p>VELIUMIN SRL este operatorul care stabilește scopurile și mijloacele prelucrării datelor tale cu caracter personal, conform Regulamentului (UE) 2016/679 (GDPR) și Legii 190/2018.</p>
+<h3>2. Ce date prelucrăm</h3><p>Date de cont (adresă de email, rol și plan), conținutul pe care îl introduci (întrebări, spețe, documente încărcate), date tehnice minime necesare funcționării (jurnale de utilizare, contorizare pentru limite) și mesajele trimise prin formularul de contact.</p>
+<h3>3. Scopuri și temei</h3><p>Prelucrăm datele pentru: furnizarea serviciului și autentificare (executarea contractului), aplicarea limitelor și prevenirea abuzului (interes legitim), respectarea obligațiilor legale și, unde e cazul, pe bază de consimțământ. Nu folosim conținutul tău pentru a antrena modele fără temei adecvat.</p>
+<h3>4. Furnizori (împuterniciți)</h3><p>Ne bazăm pe furnizori de infrastructură și de modele AI care prelucrează date la instrucțiunile noastre (găzduire de bază de date și funcții, procesare a limbajului). Aceștia sunt selectați cu garanții de securitate și, unde e cazul, clauze standard de transfer.</p>
+<h3>5. Stocare și localizare</h3><p>Datele sunt găzduite pe infrastructură din Uniunea Europeană, cu măsuri tehnice și organizatorice de securitate. Le păstrăm cât timp ai cont activ și pe durata cerută de obligațiile legale, apoi le ștergem sau anonimizăm.</p>
+<h3>6. Drepturile tale</h3><p>Ai dreptul de acces, rectificare, ștergere, restricționare, opoziție și portabilitate, precum și dreptul de a-ți retrage consimțământul. Îți poți exercita drepturile scriind la office@speta.io. Ai dreptul de a depune plângere la Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP).</p>
+<h3>7. Securitate</h3><p>Aplicăm control al accesului, izolare între conturi și transmitere criptată. Niciun sistem nu e complet lipsit de riscuri; te încurajăm să nu introduci date sensibile inutile.</p>
+<h3>8. Contact</h3><p>office@speta.io</p>`
 };
 function showLegal(k){ hideAll(); const v=document.getElementById("legalView"); v.innerHTML=LEGAL[k]; v.style.display="block"; window.scrollTo(0,0); }
 const CONTACT=`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Contact și programare demo</h1><p class="updated">Pentru Enterprise / Corporate sau întrebări. Revenim curând.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:28px;margin-top:20px"><div><h3>Trimite-ne un mesaj</h3><div class="field"><label>Email-ul tău</label><input id="cEmail" placeholder="nume@exemplu.ro"></div><div class="field"><label>Titlu</label><input id="cSubject" placeholder="Ex: Demo SPETA pentru cabinet"></div><div class="field"><label>Mesaj</label><textarea id="cMsg" rows="4"></textarea></div><button class="btn" onclick="sendContact()">Trimite</button></div><div><h3>Date de contact</h3><p><b>Email:</b> office@speta.io<br><b>Telefon:</b> +40 7xx xxx xxx<br><b>Program:</b> Luni până vineri, 09:00 la 18:00</p></div></div>`;
 function showContact(){ hideAll(); const v=document.getElementById("legalView"); v.innerHTML=CONTACT; v.style.display="block"; window.scrollTo(0,0); }
-function sendContact(){ const em=(document.getElementById("cEmail").value||"").trim(),su=(document.getElementById("cSubject").value||"Contact SPETA").trim(),ms=(document.getElementById("cMsg").value||"").trim(); window.location.href="mailto:office@speta.io?subject="+encodeURIComponent(su)+"&body="+encodeURIComponent(ms+"\n\nDe la: "+em); }
+async function sendContact(){
+  const em=(document.getElementById("cEmail").value||"").trim(),su=(document.getElementById("cSubject").value||"Contact SPETA").trim(),ms=(document.getElementById("cMsg").value||"").trim();
+  if(ms.length<2){ toast("Scrie un mesaj."); return; }
+  try{ const { error } = await sb.from("contact_messages").insert({ email:em, subiect:su, mesaj:ms, sursa:"contact" }); if(error) throw error;
+    document.getElementById("cEmail").value="";document.getElementById("cSubject").value="";document.getElementById("cMsg").value=""; toast("Mesaj trimis. Revenim curând."); }
+  catch(e){ toast("Nu am putut trimite. Scrie-ne la office@speta.io"); }
+}
 
 /* ---------- APP ---------- */
 const MOD_DEF = {
   ask:{t:"Ask Legal",ic:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
   speta:{t:"Analiză speță",ic:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'},
   contract:{t:"Contract Review",ic:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'},
-  draft:{t:"Draft Assistant",ic:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',soon:1},
-  monitor:{t:"Legislative Monitor",ic:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',soon:1},
+  draft:{t:"Draft Assistant",ic:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'},
+  monitor:{t:"Legislative Monitor",ic:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
   kb:{t:"Knowledge Base",ic:'<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',soon:1},
-  audit:{t:"Source Audit",ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',soon:1},
+  audit:{t:"Source Audit",ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'},
   admin:{t:"Admin",ic:'<path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'},
 };
 const soonDesc={ speta:"Rezumat, probleme juridice, articole aplicabile, riscuri și direcții, pornind de la o speță.",contract:"Clauze lipsă sau riscante, comparate cu template-urile interne.",draft:"Notificări, memo-uri, clauze și cereri preliminare.",monitor:"Modificările legislative relevante, explicate.",kb:"Documentele interne ale firmei, indexate și izolate.",audit:"Istoricul complet al fiecărui răspuns, exportabil." };
@@ -729,6 +764,9 @@ function renderModule(mod){
   else if(mod==="admin"){ renderAdmin(); }
   else if(mod==="contract"){ renderContract(); }
   else if(mod==="speta"){ renderSpeta(); }
+  else if(mod==="draft"){ renderDraft(); }
+  else if(mod==="monitor"){ renderMonitor(); }
+  else if(mod==="audit"){ renderAudit(); }
   else c.innerHTML=`<div class="soon-box"><div class="k">În curând</div><h2>${MOD_DEF[mod].t}</h2><p style="max-width:500px;margin:0 auto">${soonDesc[mod]}</p></div>`;
 }
 function statCard(t,v){ return `<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px"><div style="font-size:12px;color:var(--muted)">${t}</div><div style="font-size:26px;font-weight:800;color:var(--navy);margin-top:4px">${v==null?0:v}</div></div>`; }
@@ -879,6 +917,110 @@ function renderSpetaResult(d){
     +'<div class="amuted" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Analiză de asistență. Verificarea și decizia finală aparțin avocatului.</div></div>'
     +'<div class="src-box"><h4>Articole relevante</h4>'+srcs+'</div></div>';
 }
+
+/* ---------- DRAFT ASSISTANT ---------- */
+let lastDraft=null;
+function renderDraft(){
+  const c=document.getElementById("content");
+  c.innerHTML=`<div style="max-width:900px;margin:0 auto;height:100%;overflow:auto">
+    <div style="margin-bottom:16px"><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Draft Assistant</h2><p style="margin:0;color:var(--muted);font-size:14px">Generează un draft de act juridic pornind de la instrucțiunile tale, cu temei legal din legislația indexată. Câmpurile necunoscute apar între paranteze drepte, gata de completat.</p></div>
+    <div class="card">
+      <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:5px">Tip act</label>
+      <select id="drTip" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-family:var(--font);font-size:14px;background:#fff;margin-bottom:12px">
+        <option value="notificare">Notificare / punere în întârziere</option>
+        <option value="somatie">Somație de plată</option>
+        <option value="memo">Memoriu / notă juridică</option>
+        <option value="cerere">Cerere / adresă oficială</option>
+        <option value="clauza">Clauză contractuală</option>
+      </select>
+      <textarea id="drCtx" oninput="this.style.height='auto';this.style.height=Math.min(300,this.scrollHeight)+'px'" placeholder="Descrie ce vrei să conțină actul: părțile, obiectul, ce se cere, termene, sume, temei... Ex: Notificare către un chiriaș care nu a plătit chiria pe 3 luni, prin care i se cere plata în 15 zile." style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-family:var(--font);font-size:14px;min-height:130px;resize:vertical"></textarea>
+      <div style="margin-top:12px">${lawSelectorHTML()}</div>
+      <div class="row" style="justify-content:flex-end;align-items:center;margin-top:12px"><button class="btn" id="drBtn">Generează draft</button></div>
+    </div>
+    <div id="drResult" style="margin-top:16px"></div></div>`;
+  wireLawSelector();
+  document.getElementById("drBtn").addEventListener("click",runDraft);
+}
+async function runDraft(){
+  const btn=document.getElementById("drBtn"); const tip=document.getElementById("drTip").value; const context=(document.getElementById("drCtx").value||"").trim(); const out=document.getElementById("drResult");
+  if(context.length<20){ out.innerHTML='<div class="card"><span class="err">Descrie mai detaliat ce vrei să conțină actul.</span></div>'; return; }
+  const laws=getSelectedLaws();
+  btn.disabled=true; out.innerHTML='<div class="card"><span class="spinner"></span> Redactez draftul...</div>';
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) throw new Error("Sesiune expirată. Autentifică-te din nou.");
+    const res=await fetch(DRAFT_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({tip,context,token:session.access_token,legi:laws.join(",")})});
+    const d=await res.json();
+    if(d.error) throw new Error(d.message||d.error);
+    lastDraft=d; out.innerHTML=renderDraftResult(d);
+  }catch(e){ out.innerHTML='<div class="card"><span class="err">Eroare: '+esc(e.message)+'</span></div>'; }
+  finally{ btn.disabled=false; }
+}
+function buildDraftText(d){ if(!d)return""; let s="SPETA — Draft: "+(d.tip||"")+"\n"+new Date().toLocaleString("ro-RO")+"\n\n"+(d.draft||"")+"\n\n— Surse —\n"; (d.sources||[]).forEach(x=>s+="- "+x.articol+" · "+(x.lege||"")+" "+(x.sursa_url||"")+"\n"); s+="\nDraft generat de SPETA. Verificarea și finalizarea aparțin avocatului."; return s; }
+function copyDraft(){ copyText(buildDraftText(lastDraft)); }
+function exportDraft(){ downloadText("speta-draft-"+Date.now()+".txt", buildDraftText(lastDraft)); }
+function renderDraftResult(d){
+  const srcs=(d.sources||[]).map(s=>'<div class="src"><b>'+esc(s.articol)+'</b> <span class="sim">('+Number(s.similaritate).toFixed(2)+')</span><br><span class="lg">'+esc(s.lege||"")+'</span><br><a href="'+esc(s.sursa_url)+'" target="_blank">sursă oficială</a></div>').join("")||'<div class="convo-empty">—</div>';
+  return '<div class="ans-grid" style="align-items:start">'
+    +'<div class="ans-box"><h4 style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Draft — '+esc(d.tip||"")+'</h4><div class="answer" style="white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;font-size:14px;line-height:1.6;color:var(--ink)">'+esc(d.draft||"")+'</div>'
+    +'<div class="turn-actions"><button onclick="copyDraft()">Copiază</button><button onclick="exportDraft()">Export</button></div>'
+    +'<div class="amuted" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Draft de asistență. Verifică datele, temeiul legal și forma; decizia și răspunderea aparțin avocatului.</div></div>'
+    +'<div class="src-box"><h4>Temei legal folosit</h4>'+srcs+'</div></div>';
+}
+
+/* ---------- LEGISLATIVE MONITOR ---------- */
+async function renderMonitor(){
+  const c=document.getElementById("content");
+  c.innerHTML=`<div style="max-width:1000px;margin:0 auto;height:100%;overflow:auto">
+    <div style="margin-bottom:16px"><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Legislative Monitor</h2><p style="margin:0;color:var(--muted);font-size:14px">Actele normative indexate în SPETA, numărul de articole și data ultimei actualizări a datelor.</p></div>
+    <div id="monBody"><div class="card"><span class="spinner"></span> Se încarcă...</div></div></div>`;
+  try{
+    const r=await fetch(STATUS_ENDPOINT); const s=await r.json();
+    const acte=(s.acte||[]).slice();
+    const upd=s.last_updated?new Date(s.last_updated).toLocaleDateString("ro-RO",{day:"numeric",month:"long",year:"numeric"}):"—";
+    const rows=acte.map(a=>{
+      const d=a.ultima?new Date(a.ultima).toLocaleDateString("ro-RO",{day:"numeric",month:"short",year:"numeric"}):"—";
+      const u=(a.url&&a.url!=="https://legislatie.just.ro")?'<a href="'+esc(a.url)+'" target="_blank">sursă</a>':'<span style="color:var(--muted)">—</span>';
+      return '<tr><td style="padding:10px 12px;border-top:1px solid var(--line)"><b style="color:var(--navy)">'+esc(a.titlu)+'</b></td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63">'+esc((a.numar||"")+(a.an?"/"+a.an:""))+'</td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63;text-align:right">'+a.articole+'</td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63">'+d+'</td><td style="padding:10px 12px;border-top:1px solid var(--line)">'+u+'</td></tr>';
+    }).join("");
+    document.getElementById("monBody").innerHTML=
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">'
+      +statCard("Acte indexate",s.legi||0)+statCard("Articole",s.articole||0)+statCard("Ultima actualizare",upd)+'</div>'
+      +'<div style="background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13.5px"><thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px"><th style="padding:10px 12px">Act normativ</th><th style="padding:10px 12px">Nr./An</th><th style="padding:10px 12px;text-align:right">Articole</th><th style="padding:10px 12px">Actualizat</th><th style="padding:10px 12px">Sursă</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'<p style="color:var(--muted);font-size:12.5px;margin-top:12px">„Actualizat" = data la care articolele au fost indexate/reindexate în SPETA, nu neapărat data publicării în Monitorul Oficial.</p>';
+  }catch(e){ document.getElementById("monBody").innerHTML='<div class="card"><span class="err">Nu am putut încărca starea legislației.</span></div>'; }
+}
+
+/* ---------- SOURCE AUDIT ---------- */
+const modLabels={ask:"Ask Legal",speta:"Analiză speță",draft:"Draft",contract:"Contract"};
+let lastAudit=[];
+async function renderAudit(){
+  const c=document.getElementById("content");
+  c.innerHTML=`<div style="max-width:900px;margin:0 auto;height:100%;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Source Audit</h2><p style="margin:0;color:var(--muted);font-size:14px;max-width:560px">Istoricul întrebărilor și al surselor citate, pentru trasabilitate. Poți exporta tot ca fișier pentru dosar.</p></div><button class="btn-ghost" id="audExport">Export tot</button></div>
+    <div id="audBody"><div class="card"><span class="spinner"></span> Se încarcă istoricul...</div></div></div>`;
+  document.getElementById("audExport").addEventListener("click",exportAudit);
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) throw new Error("Sesiune expirată.");
+    const r=await fetch(HISTORY_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:session.access_token})});
+    const d=await r.json(); if(d.error) throw new Error(d.message||d.error);
+    lastAudit=d.items||[];
+    document.getElementById("audBody").innerHTML=renderAuditList(lastAudit);
+  }catch(e){ document.getElementById("audBody").innerHTML='<div class="card"><span class="err">Eroare: '+esc(e.message)+'</span></div>'; }
+}
+function renderAuditList(items){
+  if(!items.length) return '<div class="card" style="text-align:center;color:var(--muted)">Încă nu ai întrebări în istoric. Pune o întrebare în Ask Legal și revino aici.</div>';
+  const cols={ridicat:"var(--green)",mediu:"var(--amber)",scazut:"var(--red)"};
+  return items.map(it=>{
+    const dt=it.created_at?new Date(it.created_at).toLocaleString("ro-RO",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+    const badge=it.incredere?'<span style="background:'+(cols[it.incredere]||"#6a748c")+';color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px">'+it.incredere+'</span>':'';
+    const srcs=(it.sources||[]).map(s=>'<div class="src" style="margin:0"><b style="font-size:12px">'+esc(s.articol)+'</b>'+(s.url?' <a href="'+esc(s.url)+'" target="_blank" style="font-size:11.5px">sursă</a>':'')+'</div>').join("")||'<div style="color:var(--muted);font-size:12px">Fără surse.</div>';
+    return '<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#0a5fd0;background:rgba(10,108,255,.1);padding:2px 9px;border-radius:99px">'+(modLabels[it.modul]||it.modul)+'</span><span style="font-size:12px;color:var(--muted)">'+dt+' '+badge+'</span></div><div style="font-size:14px;color:var(--ink);line-height:1.5;margin-bottom:10px;word-break:break-word">'+esc(it.input||"")+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">'+srcs+'</div></div>';
+  }).join("");
+}
+function buildAuditAll(items){ let s="SPETA — Source Audit\n"+new Date().toLocaleString("ro-RO")+"\n\n"; (items||[]).forEach(it=>{ s+="["+(modLabels[it.modul]||it.modul)+"] "+(it.created_at?new Date(it.created_at).toLocaleString("ro-RO"):"")+"\nÎntrebare: "+(it.input||"")+"\nÎncredere: "+(it.incredere||"—")+"\nSurse:\n"; (it.sources||[]).forEach(x=>s+="  - "+x.articol+" "+(x.url||"")+"\n"); s+="\n"; }); s+="SPETA — instrument de asistență."; return s; }
+function exportAudit(){ if(!lastAudit.length){ toast("Nimic de exportat"); return; } downloadText("speta-audit-complet-"+Date.now()+".txt", buildAuditAll(lastAudit)); }
 
 /* ---------- CONTUL MEU ---------- */
 function openAccount(){ document.querySelectorAll("#nav a").forEach(x=>x.classList.remove("active")); document.getElementById("modTitle").textContent="Contul meu"; renderAccount(); closeSidebar(); }
