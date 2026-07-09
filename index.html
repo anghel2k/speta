@@ -338,6 +338,50 @@
   .mock .ma-caret{display:inline-block;width:2px;height:1em;background:var(--blue);margin-left:1px;vertical-align:-2px;animation:heroCaret .7s steps(1) infinite;}
   @keyframes heroCaret{0%,50%{opacity:1}51%,100%{opacity:0}}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important;}}
+  /* ===== REDESIGN: hero închis, etichete, carduri contrastante ===== */
+  #landing nav.top{background:#0e1730;border-bottom:1px solid rgba(255,255,255,.08);backdrop-filter:none;}
+  #landing nav.top .brand{color:#fff;}
+  #landing nav.top .ltab{color:#aab6d6;}
+  #landing nav.top .ltab:hover{color:#fff;background:rgba(255,255,255,.08);}
+  #landing nav.top .ltab.active{color:#fff;background:rgba(0,106,255,.30);}
+  #landing nav.top .btn-ghost{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(255,255,255,.22);}
+  #landing nav.top .btn-ghost:hover{background:rgba(255,255,255,.13);}
+  #landing .hamburger{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);}
+  #landing .hamburger svg{stroke:#fff;}
+  .hero-band{position:relative;z-index:1;background:radial-gradient(1100px 560px at 82% -25%, rgba(0,106,255,.40), transparent 58%),linear-gradient(180deg,#0e1730 0%,#0b1226 100%);overflow:hidden;}
+  .hero-band::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);}
+  .hero-band .hero{padding-top:54px;padding-bottom:64px;}
+  .hero-band .hero h1{color:#fff;}
+  .hero-band .hero p.lead{color:#b8c4e2;}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.3px;color:#cdd8f5;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);padding:6px 13px;border-radius:99px;margin-bottom:20px;}
+  .he-dot{width:7px;height:7px;border-radius:50%;background:#4d8bff;box-shadow:0 0 0 3px rgba(77,139,255,.28);animation:heroDot 2.4s ease-in-out infinite;}
+  .hero-ghost{background:rgba(255,255,255,.08)!important;color:#fff!important;border-color:rgba(255,255,255,.24)!important;}
+  .hero-ghost:hover{background:rgba(255,255,255,.15)!important;}
+  .hero-trust{margin-top:16px;font-size:12.5px;color:#8ea0c8;}
+  .hero-cta-mobile{display:none;}
+  .sec-eyebrow{color:#006AFF;font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:10px;}
+  .aud.pros{background:linear-gradient(160deg,#0f1830,#0b1328);border:1px solid rgba(255,255,255,.08);border-top:3px solid var(--blue);}
+  .aud.pros h3{color:#fff;}
+  .aud.pros .k{color:#8394bd;}
+  .aud.pros .price{color:#9fb0d6;}
+  .aud.pros .plans{color:#c2cee8;}
+  .aud.pros .plans b{color:#fff;}
+  .cta-band{position:relative;z-index:1;background:radial-gradient(800px 400px at 50% -40%, rgba(0,106,255,.35), transparent 60%),linear-gradient(160deg,#0f1830,#0b1226);margin-top:26px;}
+  .cta-band-inner{max-width:720px;margin:0 auto;padding:58px 32px;text-align:center;}
+  .cta-band h2{color:#fff;font-size:30px;font-weight:800;margin:0 0 10px;letter-spacing:-.02em;}
+  .cta-band p{color:#b8c4e2;font-size:16px;line-height:1.6;margin:0 0 22px;}
+  @media(max-width:760px){
+    .hero-band .hero{padding-top:24px;padding-bottom:24px;}
+    .hero .hero-copy .cta{display:none;}
+    .hero p.lead{display:none;}
+    .hero-trust{display:none;}
+    .hero-eyebrow{margin-bottom:13px;font-size:11.5px;padding:5px 11px;}
+    .hero-cta-mobile{display:flex;gap:10px;width:100%;margin-top:2px;}
+    .hero-cta-mobile .btn,.hero-cta-mobile .btn-ghost{flex:1;text-align:center;}
+    .cta-band-inner{padding:40px 18px;}
+    .cta-band h2{font-size:23px;}
+    .sec-eyebrow{font-size:11px;}
+  }
 </style>
 </head>
 <body>
@@ -368,13 +412,13 @@
       <div class="mobmenu-auth" id="mobmenuAuth"></div>
     </div></nav>
     <div id="lv-home">
-    <section class="hero">
+    <div class="hero-band"><section class="hero">
       <div class="hero-copy">
-        <div class="eyebrow">SPETA</div>
-        <div class="eyebrow-sub">Software pentru Evidență, Tehnologie și Analiză Juridică</div>
-        <h1>Un workspace juridic complet, nu doar un chatbot.</h1>
-        <p class="lead">SPETA răspunde la întrebări juridice pe baza legislației românești indexate, cu citarea exactă a articolelor și a surselor. Pentru studenți la drept și pentru avocați deopotrivă, fiecare la nevoile lui.</p>
-        <div class="cta"><button class="btn" onclick="landingTab('pricing')">Vezi prețuri</button></div>
+        <div class="hero-eyebrow"><span class="he-dot"></span> Workspace juridic AI · România</div>
+        <h1>Întrebi normal. Primești răspunsul din lege.</h1>
+        <p class="lead">Răspunsuri juridice cu articolul exact și sursa oficială, din legislația românească indexată. Pentru studenți la drept și avocați.</p>
+        <div class="cta"><button class="btn" onclick="showAuth('signup')">Începe gratuit</button><button class="btn-ghost hero-ghost" onclick="scrollToModules()">Vezi cum funcționează</button></div>
+        <div class="hero-trust">Fără card la înscriere · Surse verificabile · Găzduit în UE</div>
       </div>
       <div class="hero-visual"><div class="mock">
         <div class="mock-head">
@@ -391,10 +435,12 @@
           </div>
         </div>
       </div></div>
-    </section>
+      <div class="cta hero-cta-mobile"><button class="btn" onclick="showAuth('signup')">Începe gratuit</button><button class="btn-ghost hero-ghost" onclick="scrollToModules()">Cum funcționează</button></div>
+    </section></div>
 
     <section class="section" id="secAudience">
-      <h2>Pentru fiecare, la nevoile lui</h2>
+      <div class="sec-eyebrow">Pentru fiecare, la nevoile lui</div>
+      <h2>Aceeași bază legislativă, două experiențe.</h2>
       <p class="subtitle">Aceeași bază legislativă actualizată, două experiențe: una accesibilă pentru studenți, una completă pentru profesioniști.</p>
       <div class="audience">
         <div class="aud students" id="students-sec">
@@ -413,7 +459,8 @@
     </section>
 
     <section class="section" id="secModules">
-      <h2>Modulele workspace-ului</h2>
+      <div class="sec-eyebrow">Modulele workspace-ului</div>
+      <h2>Studenții pornesc cu Ask Legal. Profesioniștii au tot fluxul.</h2>
       <p class="subtitle">Studenții pornesc cu Ask Legal. Profesioniștii au întregul flux de lucru.</p>
       <div class="mods">
         <div class="mod"><div class="fi"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h4>Ask Legal</h4><p>Întrebări cu răspunsuri bazate pe surse.</p></div>
@@ -428,7 +475,8 @@
     </div>
     <div id="lv-pricing" style="display:none">
       <section class="section" style="text-align:center">
-        <h2>Prețuri și planuri</h2>
+        <div class="sec-eyebrow">Prețuri și planuri</div>
+        <h2>Începe gratuit ca student.</h2>
         <p class="subtitle" style="margin-left:auto;margin-right:auto">Începe gratuit ca student. Planurile profesionale deblochează întregul workspace.</p>
         <div class="lprice-grid">
           <div class="lplan" id="plan-student">
@@ -462,7 +510,8 @@
     </div>
     <div id="lv-faq" style="display:none">
       <section class="section" style="text-align:center">
-        <h2>Întrebări frecvente</h2>
+        <div class="sec-eyebrow">Întrebări frecvente</div>
+        <h2>Ce trebuie să știi înainte să începi.</h2>
         <p class="subtitle" style="margin-left:auto;margin-right:auto">Ce trebuie să știi despre SPETA înainte să începi.</p>
         <div class="lfaq">
           <details><summary>Ce este SPETA?</summary><p>Un workspace juridic AI românesc. Răspunde la întrebări juridice pe baza legislației indexate, analizează spețe și verifică documente, totul cu surse citate. Nu este un simplu chatbot.</p></details>
@@ -493,6 +542,11 @@
         </div>
       </section>
     </div>
+    <section class="cta-band"><div class="cta-band-inner">
+      <h2>Pregătit să întrebi altfel?</h2>
+      <p>Întrebi în limbaj natural, primești răspunsul cu articolul exact și sursa oficială. Gratuit pentru studenți, complet pentru avocați.</p>
+      <button class="btn" onclick="showAuth('signup')">Începe gratuit</button>
+    </div></section>
     <footer class="footer">
       <div class="inner">
         <div class="col"><div class="brand">SPETA</div><div style="font-size:13px;margin-top:10px;max-width:280px;color:#aeb8d4;line-height:1.6">Workspace juridic pentru studenți și profesioniști, cu surse verificabile.</div></div>
@@ -624,6 +678,7 @@ async function renderLandingLinks(){
   if(el) el.innerHTML=desktop;
   if(mob) mob.innerHTML=mobile;
 }
+function scrollToModules(){ const e=document.getElementById("secModules")||document.getElementById("secAudience"); if(e) e.scrollIntoView({behavior:"smooth",block:"start"}); }
 function toggleMobileMenu(e){ e.stopPropagation(); const m=document.getElementById("mobmenu"); if(m) m.classList.toggle("open"); }
 function mobGo(tab){ const m=document.getElementById("mobmenu"); if(m) m.classList.remove("open"); landingTab(tab); }
 document.addEventListener("click", e=>{ const m=document.getElementById("mobmenu"); if(m && m.classList.contains("open") && !e.target.closest("nav.top")) m.classList.remove("open"); });
