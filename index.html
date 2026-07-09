@@ -303,6 +303,27 @@
   #landing .lplan.featured:hover{box-shadow:0 22px 54px rgba(0,106,255,.20);}
   a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid rgba(0,106,255,.55);outline-offset:2px;}
   .btn:active,.btn-ghost:active{transform:translateY(1px);}
+  /* ===== ANIMAȚII & MICRO-INTERACȚIUNI ===== */
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .content>div{animation:fadeInUp .28s cubic-bezier(.22,.61,.36,1) both;}
+  #lv-home .section,#lv-pricing .section,#lv-faq .section,#lv-contact .section{animation:fadeInUp .5s cubic-bezier(.22,.61,.36,1) both;}
+  .hero-copy{animation:fadeInUp .55s cubic-bezier(.22,.61,.36,1) both;}
+  .hero-visual{animation:fadeIn .9s ease both;}
+  .mock{animation:floaty 6s ease-in-out infinite;}
+  .btn{transition:opacity .15s,transform .12s,box-shadow .2s;}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,106,255,.22);}
+  .card{transition:box-shadow .2s ease,transform .2s ease;}
+  .nav a,.convo,.law-chip,.lawsel-btn,.lawsel-item,.ltab,.mobmenu a,.src,.userdd-panel a{transition:background .15s,color .15s,border-color .15s,transform .15s,box-shadow .15s;}
+  .nav a:hover{transform:translateX(2px);}
+  .src:hover{border-color:rgba(0,106,255,.35);box-shadow:0 4px 14px rgba(15,24,48,.06);}
+  .lplan .lp-badge{animation:popIn .4s .2s ease both;}
+  #betaModal{animation:fadeIn .16s ease both;}
+  #betaModal>div{animation:popIn .22s cubic-bezier(.22,.61,.36,1) both;}
+  #speta-toast{transition:opacity .2s,transform .2s;}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important;}}
 </style>
 </head>
 <body>
@@ -453,7 +474,7 @@
           </div>
           <div style="text-align:left">
             <h3 style="color:var(--navy)">Date de contact</h3>
-            <p style="color:var(--muted);line-height:1.7"><b style="color:var(--navy)">Email:</b> office@speta.io<br><b style="color:var(--navy)">Telefon:</b> +40 7xx xxx xxx<br><b style="color:var(--navy)">Program:</b> Luni până vineri, 09:00 la 18:00</p>
+            <p style="color:var(--muted);line-height:1.7"><b style="color:var(--navy)">Email:</b> office@speta.io<br><b style="color:var(--navy)">Telefon:</b> +40 722 905 095<br><b style="color:var(--navy)">Program:</b> Luni până vineri, 09:00 la 18:00</p>
           </div>
         </div>
       </section>
@@ -519,24 +540,44 @@ const REVIEW_ENDPOINT = SUPA_URL + "/functions/v1/review";
 const SPETA_ENDPOINT = SUPA_URL + "/functions/v1/speta";
 const DRAFT_ENDPOINT = SUPA_URL + "/functions/v1/draft";
 const HISTORY_ENDPOINT = SUPA_URL + "/functions/v1/history";
+const KB_INGEST_ENDPOINT = SUPA_URL + "/functions/v1/kb-ingest";
+const KB_ASK_ENDPOINT = SUPA_URL + "/functions/v1/kb-ask";
+const ORG_INFO_ENDPOINT = SUPA_URL + "/functions/v1/org-info";
+const CLAIM_ROLE_ENDPOINT = SUPA_URL + "/functions/v1/claim-role";
 const LAWS = ["Codul muncii","Codul civil","Codul penal"];
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 
 let profile = null;
 let authMode = "login", chosenRole = "student";
 const HOST = location.hostname;
-const PORTAL = /^student\./.test(HOST) ? "student" : /^app\./.test(HOST) ? "app" : "main";
-function signupMeta(){ return PORTAL==="app" ? { rol:"avocat", plan:"avocat_self" } : { rol:"student", plan:"student" }; }
-function applyPortal(){
-  if(PORTAL==="main") return;
-  const isStudent = PORTAL==="student";
-  document.title = isStudent ? "SPETA Student — Ask Legal cu surse" : "SPETA — Workspace juridic pentru avocați";
+const HOST_SUB = (/\.speta\.io$/.test(HOST) && HOST.split(".").length>2) ? HOST.split(".")[0].toLowerCase() : "";
+let PORTAL="main", ORG_SLUG="";
+if(HOST_SUB==="student") PORTAL="student";
+else if(HOST_SUB==="app") PORTAL="app";
+else if(HOST_SUB && HOST_SUB!=="www"){ PORTAL="business"; ORG_SLUG=HOST_SUB; }
+function signupMeta(){ return (PORTAL==="app"||PORTAL==="business") ? { rol:"avocat", plan:"avocat_self" } : { rol:"student", plan:"student" }; }
+function setPortalBadge(text,green){
   document.querySelectorAll("nav.top .brand, .side .brand, #auth .brand").forEach(b=>{
     if(b.querySelector(".portal-badge")) return;
-    const s=document.createElement("span"); s.className="portal-badge"; s.textContent=isStudent?"Student":"Pro";
-    s.style.cssText="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:99px;margin-left:8px;vertical-align:middle;"+(isStudent?"background:rgba(26,156,80,.14);color:#1a9c50":"background:rgba(0,106,255,.12);color:#0a5fd0");
+    const s=document.createElement("span"); s.className="portal-badge"; s.textContent=text;
+    s.style.cssText="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:99px;margin-left:8px;vertical-align:middle;"+(green?"background:rgba(26,156,80,.14);color:#1a9c50":"background:rgba(0,106,255,.12);color:#0a5fd0");
     b.appendChild(s);
   });
+}
+async function applyPortal(){
+  if(PORTAL==="main") return;
+  if(PORTAL==="business"){
+    setPortalBadge("Firmă",false);
+    ["secAudience","secModules","plan-student","plan-avocat","plan-cabinet","plan-enterprise"].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display="none"; });
+    try{ const r=await fetch(ORG_INFO_ENDPOINT+"?slug="+encodeURIComponent(ORG_SLUG)); const o=await r.json();
+      if(o&&o.exists){ document.title="SPETA · "+o.nume; const h1=document.querySelector(".hero h1"); if(h1) h1.textContent="Workspace-ul juridic al "+o.nume+"."; const lead=document.querySelector(".hero p.lead"); if(lead) lead.textContent="Acces securizat pentru echipa "+o.nume+": Ask Legal, analiză de speță, verificare de documente și Knowledge Base intern, izolat pe firmă."; window.__ORG_NAME=o.nume; }
+      else { const h1=document.querySelector(".hero h1"); if(h1) h1.textContent="Spațiu de firmă SPETA"; const lead=document.querySelector(".hero p.lead"); if(lead) lead.textContent="Acest subdomeniu nu este încă asociat unei firme. Autentifică-te cu contul primit sau contactează-ne pentru activare."; }
+    }catch(_){}
+    return;
+  }
+  const isStudent = PORTAL==="student";
+  document.title = isStudent ? "SPETA Student — Ask Legal cu surse" : "SPETA — Workspace juridic pentru avocați";
+  setPortalBadge(isStudent?"Student":"Pro", isStudent);
   const h1=document.querySelector(".hero h1"), lead=document.querySelector(".hero p.lead");
   if(isStudent){
     if(h1) h1.textContent="Învață dreptul mai repede, cu surse.";
@@ -593,16 +634,22 @@ function landingTab(name){
 /* ---------- AUTH ---------- */
 const BETA = true;
 function onSpetaDomain(){ return /(^|\.)speta\.io$/.test(location.hostname); }
-function portalForRole(rol){ return rol==="student" ? "student" : "app"; }
+function myOrgSlug(){ return (profile && profile.organizations && profile.organizations.slug) || ""; }
+function homePortalUrl(){ if(!profile) return "https://app.speta.io/"; if(profile.rol==="student") return "https://student.speta.io/"; const s=myOrgSlug(); return s ? ("https://"+s+".speta.io/") : "https://app.speta.io/"; }
 function enforcePortal(){
-  if(!onSpetaDomain() || PORTAL==="main" || !profile) return false;
-  if(profile.rol==="admin") return false; // admin poate vedea ambele portaluri
-  const want = portalForRole(profile.rol);
-  if(want!==PORTAL){
-    location.href = (want==="student" ? "https://student.speta.io" : "https://app.speta.io") + "/";
-    return true;
-  }
+  if(!onSpetaDomain() || PORTAL==="main" || !profile || profile.rol==="admin") return false;
+  if(PORTAL==="business"){ if(myOrgSlug()!==ORG_SLUG){ location.href=homePortalUrl(); return true; } return false; }
+  if(PORTAL==="app" && profile.rol==="student"){ location.href="https://student.speta.io/"; return true; }
+  if(PORTAL==="student" && profile.rol!=="student"){ location.href=homePortalUrl(); return true; }
   return false;
+}
+async function claimPortalRole(){
+  if(!profile || profile.rol!=="student") return;
+  if(PORTAL!=="app" && PORTAL!=="business") return;
+  try{ const { data:{ session } } = await sb.auth.getSession(); if(!session) return;
+    const r=await fetch(CLAIM_ROLE_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:session.access_token,portal:PORTAL})});
+    const d=await r.json(); if(d&&d.changed){ profile.rol=d.rol; profile.plan=d.plan; profile.quota_lunar=null; }
+  }catch(_){}
 }
 function showBetaModal(planName){
   let ov=document.getElementById("betaModal");
@@ -676,10 +723,10 @@ async function forgotPassword(){
 async function loadProfile(){
   const { data:{ user } } = await sb.auth.getUser();
   if(!user) return null;
-  const { data } = await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();
+  const { data } = await sb.from("profiles").select("*, organizations(nume,slug,plan)").eq("id",user.id).maybeSingle();
   return data ? {...data, email:user.email} : { id:user.id, email:user.email, rol:"student", plan:"student", quota_lunar:100, used_month:0 };
 }
-async function afterLogin(){ profile = await loadProfile(); if(enforcePortal()) return; showApp(); }
+async function afterLogin(){ profile = await loadProfile(); await claimPortalRole(); if(enforcePortal()) return; showApp(); }
 async function logout(){ await sb.auth.signOut(); profile=null; showLanding(); }
 
 /* ---------- LEGAL / CONTACT ---------- */
@@ -705,7 +752,7 @@ const LEGAL = {
 <h3>8. Contact</h3><p>office@speta.io</p>`
 };
 function showLegal(k){ hideAll(); const v=document.getElementById("legalView"); v.innerHTML=LEGAL[k]; v.style.display="block"; window.scrollTo(0,0); }
-const CONTACT=`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Contact și programare demo</h1><p class="updated">Pentru Enterprise / Corporate sau întrebări. Revenim curând.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:28px;margin-top:20px"><div><h3>Trimite-ne un mesaj</h3><div class="field"><label>Email-ul tău</label><input id="cEmail" placeholder="nume@exemplu.ro"></div><div class="field"><label>Titlu</label><input id="cSubject" placeholder="Ex: Demo SPETA pentru cabinet"></div><div class="field"><label>Mesaj</label><textarea id="cMsg" rows="4"></textarea></div><button class="btn" onclick="sendContact()">Trimite</button></div><div><h3>Date de contact</h3><p><b>Email:</b> office@speta.io<br><b>Telefon:</b> +40 7xx xxx xxx<br><b>Program:</b> Luni până vineri, 09:00 la 18:00</p></div></div>`;
+const CONTACT=`<a class="back" onclick="showLanding()">&larr; Înapoi</a><h1>Contact și programare demo</h1><p class="updated">Pentru Enterprise / Corporate sau întrebări. Revenim curând.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:28px;margin-top:20px"><div><h3>Trimite-ne un mesaj</h3><div class="field"><label>Email-ul tău</label><input id="cEmail" placeholder="nume@exemplu.ro"></div><div class="field"><label>Titlu</label><input id="cSubject" placeholder="Ex: Demo SPETA pentru cabinet"></div><div class="field"><label>Mesaj</label><textarea id="cMsg" rows="4"></textarea></div><button class="btn" onclick="sendContact()">Trimite</button></div><div><h3>Date de contact</h3><p><b>Email:</b> office@speta.io<br><b>Telefon:</b> +40 722 905 095<br><b>Program:</b> Luni până vineri, 09:00 la 18:00</p></div></div>`;
 function showContact(){ hideAll(); const v=document.getElementById("legalView"); v.innerHTML=CONTACT; v.style.display="block"; window.scrollTo(0,0); }
 async function sendContact(){
   const em=(document.getElementById("cEmail").value||"").trim(),su=(document.getElementById("cSubject").value||"Contact SPETA").trim(),ms=(document.getElementById("cMsg").value||"").trim();
@@ -722,7 +769,7 @@ const MOD_DEF = {
   contract:{t:"Contract Review",ic:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'},
   draft:{t:"Draft Assistant",ic:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'},
   monitor:{t:"Legislative Monitor",ic:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
-  kb:{t:"Knowledge Base",ic:'<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',soon:1},
+  kb:{t:"Knowledge Base",ic:'<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'},
   audit:{t:"Source Audit",ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'},
   admin:{t:"Admin",ic:'<path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'},
 };
@@ -733,9 +780,10 @@ function showApp(){
   const isStudent = profile.rol==="student";
   document.getElementById("whoEmail").textContent = profile.email||"cont";
   const planNames={student:"PLAN STUDENT",avocat_self:"AVOCAT",cabinet:"CABINET",admin:"ADMIN"};
-  document.getElementById("planLabel").textContent = planNames[profile.plan]||"WORKSPACE";
+  const orgNm = profile.organizations && profile.organizations.nume;
+  document.getElementById("planLabel").textContent = orgNm ? orgNm.toUpperCase() : (planNames[profile.plan]||"WORKSPACE");
   const base = ["ask","speta","contract","draft","monitor","kb","audit"];
-  const mods = isStudent ? ["ask"] : (profile.rol==="admin" ? base.concat(["admin"]) : base);
+  const mods = isStudent ? ["ask","monitor"] : (profile.rol==="admin" ? base.concat(["admin"]) : base);
   document.getElementById("nav").innerHTML = mods.map((m,i)=>`<a data-mod="${m}" class="${i===0?'active':''}"><svg class="ico" viewBox="0 0 24 24">${MOD_DEF[m].ic}</svg><span>${MOD_DEF[m].t}</span>${MOD_DEF[m].soon?'<span class="soon">curând</span>':''}</a>`).join("");
   document.querySelectorAll("#nav a").forEach(a=>a.addEventListener("click",()=>{ document.querySelectorAll("#nav a").forEach(x=>x.classList.remove("active")); a.classList.add("active"); renderModule(a.dataset.mod); closeSidebar(); }));
   renderQuota(); loadStatus(); loadConvos(); renderModule("ask");
@@ -767,6 +815,7 @@ function renderModule(mod){
   else if(mod==="draft"){ renderDraft(); }
   else if(mod==="monitor"){ renderMonitor(); }
   else if(mod==="audit"){ renderAudit(); }
+  else if(mod==="kb"){ renderKB(); }
   else c.innerHTML=`<div class="soon-box"><div class="k">În curând</div><h2>${MOD_DEF[mod].t}</h2><p style="max-width:500px;margin:0 auto">${soonDesc[mod]}</p></div>`;
 }
 function statCard(t,v){ return `<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px"><div style="font-size:12px;color:var(--muted)">${t}</div><div style="font-size:26px;font-weight:800;color:var(--navy);margin-top:4px">${v==null?0:v}</div></div>`; }
@@ -1022,6 +1071,80 @@ function renderAuditList(items){
 function buildAuditAll(items){ let s="SPETA — Source Audit\n"+new Date().toLocaleString("ro-RO")+"\n\n"; (items||[]).forEach(it=>{ s+="["+(modLabels[it.modul]||it.modul)+"] "+(it.created_at?new Date(it.created_at).toLocaleString("ro-RO"):"")+"\nÎntrebare: "+(it.input||"")+"\nÎncredere: "+(it.incredere||"—")+"\nSurse:\n"; (it.sources||[]).forEach(x=>s+="  - "+x.articol+" "+(x.url||"")+"\n"); s+="\n"; }); s+="SPETA — instrument de asistență."; return s; }
 function exportAudit(){ if(!lastAudit.length){ toast("Nimic de exportat"); return; } downloadText("speta-audit-complet-"+Date.now()+".txt", buildAuditAll(lastAudit)); }
 
+/* ---------- KNOWLEDGE BASE ---------- */
+function chunkText(t){
+  t=(t||"").replace(/\r/g,"").replace(/\n{3,}/g,"\n\n").trim();
+  const paras=t.split(/\n\n+/); const out=[]; let cur="";
+  for(const p of paras){ if((cur+"\n\n"+p).length>1200){ if(cur){ out.push(cur.trim()); cur=""; } if(p.length>1200){ for(let i=0;i<p.length;i+=1200) out.push(p.slice(i,i+1200)); } else cur=p; } else cur=cur?cur+"\n\n"+p:p; }
+  if(cur.trim()) out.push(cur.trim());
+  return out.filter(x=>x.length>10).slice(0,300);
+}
+async function renderKB(){
+  const c=document.getElementById("content");
+  if(!(profile.organizations && profile.organizations.nume)){
+    c.innerHTML=`<div style="max-width:640px;margin:0 auto;height:100%;overflow:auto"><div class="soon-box" style="max-width:none"><div class="k">Cont de firmă</div><h2>Knowledge Base</h2><p style="max-width:470px;margin:0 auto 16px">Knowledge Base indexează documentele interne ale firmei (contracte-tip, note, spețe proprii) izolat, separat de ceilalți clienți, și le poți interoga cu citare. Este disponibil pentru conturile de <b>Cabinet / Business</b>.</p><button class="btn" onclick="showContact()">Activează pentru firma ta</button></div></div>`;
+    return;
+  }
+  const nm=profile.organizations.nume;
+  c.innerHTML=`<div style="max-width:960px;margin:0 auto;height:100%;overflow:auto">
+    <div style="margin-bottom:16px"><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Knowledge Base <span style="font-size:12.5px;font-weight:600;color:#0a5fd0;background:rgba(10,108,255,.1);padding:3px 10px;border-radius:99px;vertical-align:middle">${esc(nm)}</span></h2><p style="margin:0;color:var(--muted);font-size:14px">Documentele interne ale firmei, indexate și izolate. Doar membrii firmei tale au acces.</p></div>
+    <div class="ans-grid" style="align-items:start">
+      <div><div class="card"><h3 class="sec">Întreabă documentele firmei</h3>
+        <textarea id="kbQ" placeholder="Ex: Ce termen de plată prevede modelul nostru de contract de prestări servicii?" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font-family:var(--font);font-size:14px;min-height:70px;resize:vertical"></textarea>
+        <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" id="kbAskBtn">Întreabă</button></div>
+        <div id="kbAnswer" style="margin-top:12px"></div></div></div>
+      <div>
+        <div class="card"><h3 class="sec">Încarcă document</h3>
+          <p style="color:var(--muted);font-size:13px;margin:0 0 10px">PDF, DOCX sau TXT. Textul e împărțit și indexat automat.</p>
+          <label class="btn-ghost" style="cursor:pointer;width:100%;text-align:center">Alege fișier<input id="kbFile" type="file" accept=".txt,.pdf,.docx" style="display:none"></label>
+          <div id="kbUpInfo" style="font-size:12.5px;color:var(--muted);margin-top:10px"></div></div>
+        <div class="card" style="margin-top:14px"><h3 class="sec">Documente indexate</h3><div id="kbList"><span class="spinner"></span></div></div>
+      </div>
+    </div></div>`;
+  document.getElementById("kbAskBtn").addEventListener("click",runKbAsk);
+  document.getElementById("kbFile").addEventListener("change",onKbFile);
+  loadKbList();
+}
+async function loadKbList(){
+  const el=document.getElementById("kbList"); if(!el) return;
+  try{ const { data, error } = await sb.from("kb_documents").select("id,titlu,chunks,created_at").order("created_at",{ascending:false}); if(error) throw error;
+    if(!data||!data.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px">Niciun document încă. Încarcă primul fișier.</div>'; return; }
+    el.innerHTML=data.map(d=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font-size:13.5px;color:var(--navy);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(d.titlu)+'</div><div style="font-size:11.5px;color:var(--muted)">'+(d.chunks||0)+' secțiuni · '+(d.created_at?new Date(d.created_at).toLocaleDateString("ro-RO"):"")+'</div></div><button class="convo-del" style="opacity:.6" title="Șterge" onclick="deleteKbDoc(\''+d.id+'\')">&times;</button></div>').join("");
+  }catch(e){ el.innerHTML='<div class="err" style="font-size:13px">Nu am putut încărca lista.</div>'; }
+}
+async function deleteKbDoc(id){
+  if(!confirm("Ștergi documentul din Knowledge Base?")) return;
+  try{ const { error } = await sb.from("kb_documents").delete().eq("id",id); if(error) throw error; loadKbList(); toast("Document șters"); }
+  catch(e){ toast("Nu am putut șterge"); }
+}
+async function onKbFile(e){
+  const f=e.target.files[0]; if(!f) return; const info=document.getElementById("kbUpInfo");
+  info.innerHTML='<span class="spinner"></span> Extrag textul din '+esc(f.name)+'...';
+  try{
+    const txt=await extractFile(f); const chunks=chunkText(txt);
+    if(!chunks.length){ info.innerHTML='<span class="err">Nu am găsit text în fișier.</span>'; return; }
+    info.innerHTML='<span class="spinner"></span> Indexez '+chunks.length+' secțiuni...';
+    const { data:{ session } } = await sb.auth.getSession(); if(!session) throw new Error("Sesiune expirată.");
+    const r=await fetch(KB_INGEST_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:session.access_token,titlu:f.name,chunks})});
+    const d=await r.json(); if(d.error) throw new Error(d.message||d.error);
+    info.innerHTML='<span style="color:var(--green)">Indexat: '+esc(d.titlu)+' ('+d.chunks+' secțiuni).</span>';
+    e.target.value=""; loadKbList();
+  }catch(err){ info.innerHTML='<span class="err">Eroare: '+esc(err.message)+'</span>'; }
+}
+async function runKbAsk(){
+  const q=(document.getElementById("kbQ").value||"").trim(); const out=document.getElementById("kbAnswer"); const btn=document.getElementById("kbAskBtn");
+  if(!q){ out.innerHTML='<span class="err" style="font-size:13px">Scrie o întrebare.</span>'; return; }
+  btn.disabled=true; out.innerHTML='<span class="spinner"></span> Caut în documentele firmei...';
+  try{
+    const { data:{ session } } = await sb.auth.getSession(); if(!session) throw new Error("Sesiune expirată.");
+    const r=await fetch(KB_ASK_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:session.access_token,question:q})});
+    const d=await r.json(); if(d.error) throw new Error(d.message||d.error);
+    const srcs=(d.sources||[]).map(s=>'<div class="src" style="margin:0 0 6px"><b style="font-size:12.5px">'+esc(s.titlu)+'</b> <span class="sim">· secțiunea '+s.sectiune+'</span></div>').join("")||'<div style="color:var(--muted);font-size:12px">—</div>';
+    out.innerHTML='<div style="border:1px solid var(--line);border-radius:10px;padding:13px;background:#fdfefe"><div class="answer" style="white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6;color:var(--ink)">'+esc(d.answer)+'</div><div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:6px">Din documentele firmei</div>'+srcs+'</div></div>';
+  }catch(e){ out.innerHTML='<span class="err" style="font-size:13px">Eroare: '+esc(e.message)+'</span>'; }
+  finally{ btn.disabled=false; }
+}
+
 /* ---------- CONTUL MEU ---------- */
 function openAccount(){ document.querySelectorAll("#nav a").forEach(x=>x.classList.remove("active")); document.getElementById("modTitle").textContent="Contul meu"; renderAccount(); closeSidebar(); }
 function renderAccount(){
@@ -1143,9 +1266,9 @@ async function runAsk(){
 
 /* ---------- INIT ---------- */
 (async function(){
-  applyPortal();
+  await applyPortal();
   const { data:{ session } } = await sb.auth.getSession();
-  if(session){ profile = await loadProfile(); if(enforcePortal()) return; showApp(); } else { showLanding(); }
+  if(session){ profile = await loadProfile(); await claimPortalRole(); if(enforcePortal()) return; showApp(); } else { showLanding(); }
 })();
 </script>
 </body>
