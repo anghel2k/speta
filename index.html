@@ -865,9 +865,37 @@ async function renderAdmin(){
     <div id="adm" style="height:100%;overflow:auto">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px">${cards}</div>
       <div class="card" style="margin-bottom:18px"><h3 class="sec">Indexare</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">După ce imporți acte noi în baza de date, apasă aici ca să le generezi embeddings-urile.</p><button class="btn" id="reindexBtn" onclick="reindexAll()">Reindexează articolele noi</button><div id="reindexStatus" style="font-size:13px;color:var(--muted);margin-top:10px"></div></div>
+      <div class="card" style="margin-bottom:18px"><h3 class="sec">Jurnal de actualizări legislație</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Notează ce ai adăugat/actualizat. Apare în Legislative Monitor la „Ultimele actualizări".</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:2;min-width:170px"><label style="font-size:11px;color:var(--muted)">Act</label><input id="ulTitlu" placeholder="Ex: OUG 195/2002 (Codul rutier)" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:13px"></div>
+          <div style="flex:3;min-width:190px"><label style="font-size:11px;color:var(--muted)">Notă</label><input id="ulNota" placeholder="Ex: adăugat + regulament de aplicare" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:13px"></div>
+          <div><label style="font-size:11px;color:var(--muted);display:block">Dată</label><input id="ulData" type="date" style="padding:9px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:13px"></div>
+          <button class="btn" onclick="addUpdateLog()">Adaugă</button>
+        </div>
+        <div id="ulList" style="margin-top:12px"></div></div>
       <div style="background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden"><table><thead><tr style="background:#f5f8ff"><th>Email</th><th>Rol</th><th>Plan</th><th>Utilizare/lună</th><th>Creat</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="color:var(--muted)">Niciun utilizator încă.</td></tr>'}</tbody></table></div>
     </div>`;
+    const ud=document.getElementById("ulData"); if(ud) ud.value=new Date().toISOString().slice(0,10);
+    loadUpdateLog();
   }catch(e){ c.innerHTML='<div class="soon-box"><h2>Admin</h2><p class="err">'+esc(e.message)+'</p></div>'; }
+}
+async function loadUpdateLog(){
+  const el=document.getElementById("ulList"); if(!el) return;
+  try{ const { data, error } = await sb.from("update_log").select("id,titlu,nota,data").order("data",{ascending:false}).order("created_at",{ascending:false}).limit(30); if(error) throw error;
+    if(!data||!data.length){ el.innerHTML='<div style="color:var(--muted);font-size:12.5px">Nicio intrare încă.</div>'; return; }
+    el.innerHTML=data.map(u=>'<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><b style="font-size:13px;color:var(--navy)">'+esc(u.titlu)+'</b> <span style="font-size:11.5px;color:var(--muted)">· '+esc(u.data||"")+'</span>'+(u.nota?'<div style="font-size:12.5px;color:#414a63">'+esc(u.nota)+'</div>':'')+'</div><button class="convo-del" style="opacity:.6" onclick="deleteUpdateLog(\''+u.id+'\')">&times;</button></div>').join("");
+  }catch(e){ el.innerHTML='<div class="err" style="font-size:12.5px">Nu am putut încărca jurnalul.</div>'; }
+}
+async function addUpdateLog(){
+  const t=(document.getElementById("ulTitlu").value||"").trim(), n=(document.getElementById("ulNota").value||"").trim(), d=document.getElementById("ulData").value||null;
+  if(!t){ toast("Scrie numele actului."); return; }
+  try{ const { error } = await sb.from("update_log").insert({ titlu:t, nota:n||null, data:d }); if(error) throw error;
+    document.getElementById("ulTitlu").value=""; document.getElementById("ulNota").value=""; toast("Adăugat în jurnal"); loadUpdateLog(); }
+  catch(e){ toast("Eroare: "+(e.message||"nu s-a putut adăuga")); }
+}
+async function deleteUpdateLog(id){
+  try{ const { error } = await sb.from("update_log").delete().eq("id",id); if(error) throw error; loadUpdateLog(); }
+  catch(e){ toast("Nu am putut șterge"); }
 }
 
 /* ---------- CONTRACT REVIEW ---------- */
@@ -1046,10 +1074,13 @@ async function renderMonitor(){
       const u=(a.url&&a.url!=="https://legislatie.just.ro")?'<a href="'+esc(a.url)+'" target="_blank">sursă</a>':'<span style="color:var(--muted)">—</span>';
       return '<tr><td style="padding:10px 12px;border-top:1px solid var(--line)"><b style="color:var(--navy)">'+esc(a.titlu)+'</b></td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63">'+esc((a.numar||"")+(a.an?"/"+a.an:""))+'</td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63;text-align:right">'+a.articole+'</td><td style="padding:10px 12px;border-top:1px solid var(--line);color:#414a63">'+d+'</td><td style="padding:10px 12px;border-top:1px solid var(--line)">'+u+'</td></tr>';
     }).join("");
+    const ul=(s.updates||[]);
+    const updHtml = ul.length ? ('<div class="card" style="margin-top:16px"><h3 class="sec">Ultimele actualizări</h3>'+ul.map(x=>'<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:12px;color:var(--muted);white-space:nowrap;min-width:88px">'+esc(x.data||"")+'</div><div style="min-width:0"><b style="font-size:13.5px;color:var(--navy)">'+esc(x.titlu)+'</b>'+(x.nota?'<div style="font-size:12.5px;color:#414a63;margin-top:2px">'+esc(x.nota)+'</div>':'')+'</div></div>').join("")+'</div>') : '';
     document.getElementById("monBody").innerHTML=
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">'
       +statCard("Acte indexate",s.legi||0)+statCard("Articole",s.articole||0)+statCard("Ultima actualizare",upd)+'</div>'
       +'<div style="background:#fff;border:1px solid var(--line);border-radius:12px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13.5px"><thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px"><th style="padding:10px 12px">Act normativ</th><th style="padding:10px 12px">Nr./An</th><th style="padding:10px 12px;text-align:right">Articole</th><th style="padding:10px 12px">Actualizat</th><th style="padding:10px 12px">Sursă</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +updHtml
       +'<p style="color:var(--muted);font-size:12.5px;margin-top:12px">„Actualizat" = data la care articolele au fost indexate/reindexate în SPETA, nu neapărat data publicării în Monitorul Oficial.</p>';
   }catch(e){ document.getElementById("monBody").innerHTML='<div class="card"><span class="err">Nu am putut încărca starea legislației.</span></div>'; }
 }
