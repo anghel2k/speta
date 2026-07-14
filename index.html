@@ -1085,36 +1085,48 @@ async function renderMonitor(){
   }catch(e){ document.getElementById("monBody").innerHTML='<div class="card"><span class="err">Nu am putut încărca starea legislației.</span></div>'; }
 }
 
-/* ---------- SOURCE AUDIT ---------- */
-const modLabels={ask:"Ask Legal",speta:"Analiză speță",draft:"Draft",contract:"Contract"};
-let lastAudit=[];
-async function renderAudit(){
+/* ---------- SOURCE AUDIT (pe conversații) ---------- */
+let auditConvos=[], auditSel="all";
+function readAuditConvos(){ try{ const r=localStorage.getItem(convoKey()); return r?JSON.parse(r):[]; }catch(_){ return []; } }
+function renderAudit(){
   const c=document.getElementById("content");
+  auditConvos=readAuditConvos(); auditSel="all";
+  const opts='<option value="all">Toate conversațiile</option>'+auditConvos.map(cv=>'<option value="'+cv.id+'">'+esc(String(cv.title||"Conversație").slice(0,70))+'</option>').join("");
   c.innerHTML=`<div style="max-width:900px;margin:0 auto;height:100%;overflow:auto">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap"><div><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Source Audit</h2><p style="margin:0;color:var(--muted);font-size:14px;max-width:560px">Istoricul întrebărilor și al surselor citate, pentru trasabilitate. Poți exporta tot ca fișier pentru dosar.</p></div><button class="btn-ghost" id="audExport">Export tot</button></div>
-    <div id="audBody"><div class="card"><span class="spinner"></span> Se încarcă istoricul...</div></div></div>`;
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap"><div><h2 style="margin:0 0 6px;color:var(--navy);font-size:22px">Source Audit</h2><p style="margin:0;color:var(--muted);font-size:14px;max-width:560px">Întrebările și sursele citate, pe conversații. Alege o conversație (sau toate) și exportă pentru dosar.</p></div><button class="btn-ghost" id="audExport">Export</button></div>
+    <div style="margin-bottom:14px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Conversație</label><select id="audSel" style="width:100%;max-width:420px;padding:10px;border:1px solid var(--line);border-radius:10px;font-family:var(--font);font-size:14px;background:#fff">${opts}</select></div>
+    <div id="audBody"></div></div>`;
   document.getElementById("audExport").addEventListener("click",exportAudit);
-  try{
-    const { data:{ session } } = await sb.auth.getSession();
-    if(!session) throw new Error("Sesiune expirată.");
-    const r=await fetch(HISTORY_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({token:session.access_token})});
-    const d=await r.json(); if(d.error) throw new Error(d.message||d.error);
-    lastAudit=d.items||[];
-    document.getElementById("audBody").innerHTML=renderAuditList(lastAudit);
-  }catch(e){ document.getElementById("audBody").innerHTML='<div class="card"><span class="err">Eroare: '+esc(e.message)+'</span></div>'; }
+  document.getElementById("audSel").addEventListener("change",e=>{ auditSel=e.target.value; renderAuditBody(); });
+  renderAuditBody();
 }
-function renderAuditList(items){
-  if(!items.length) return '<div class="card" style="text-align:center;color:var(--muted)">Încă nu ai întrebări în istoric. Pune o întrebare în Ask Legal și revino aici.</div>';
+function auditItems(){
+  const scope = auditSel==="all" ? auditConvos : auditConvos.filter(c=>String(c.id)===String(auditSel));
+  const items=[];
+  scope.forEach(cv=>{ (cv.turns||[]).forEach(t=>{ if(t.loading||t.error||!t.q) return; items.push({ conv:cv.title||"Conversație", q:t.q, incredere:t.incredere, sources:(t.sources||[]).map(s=>({articol:s.articol,lege:s.lege,url:s.sursa_url})) }); }); });
+  return items;
+}
+function renderAuditBody(){
+  const el=document.getElementById("audBody"); if(!el) return;
+  if(!auditConvos.length){ el.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Încă nu ai conversații. Pune o întrebare în Ask Legal și revino aici.</div>'; return; }
+  const items=auditItems();
+  if(!items.length){ el.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Nicio întrebare cu răspuns în selecția curentă.</div>'; return; }
   const cols={ridicat:"var(--green)",mediu:"var(--amber)",scazut:"var(--red)"};
-  return items.map(it=>{
-    const dt=it.created_at?new Date(it.created_at).toLocaleString("ro-RO",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+  el.innerHTML=items.map(it=>{
     const badge=it.incredere?'<span style="background:'+(cols[it.incredere]||"#6a748c")+';color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px">'+it.incredere+'</span>':'';
-    const srcs=(it.sources||[]).map(s=>'<div class="src" style="margin:0"><b style="font-size:12px">'+esc(s.articol)+'</b>'+(s.url?' <a href="'+esc(s.url)+'" target="_blank" style="font-size:11.5px">sursă</a>':'')+'</div>').join("")||'<div style="color:var(--muted);font-size:12px">Fără surse.</div>';
-    return '<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#0a5fd0;background:rgba(10,108,255,.1);padding:2px 9px;border-radius:99px">'+(modLabels[it.modul]||it.modul)+'</span><span style="font-size:12px;color:var(--muted)">'+dt+' '+badge+'</span></div><div style="font-size:14px;color:var(--ink);line-height:1.5;margin-bottom:10px;word-break:break-word">'+esc(it.input||"")+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">'+srcs+'</div></div>';
+    const convTag = auditSel==="all" ? '<span style="font-size:11px;font-weight:700;color:#0a5fd0;background:rgba(10,108,255,.1);padding:2px 9px;border-radius:99px;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(it.conv)+'</span>' : '';
+    const srcs=(it.sources||[]).map(s=>'<div class="src" style="margin:0"><b style="font-size:12px">'+esc(s.articol)+'</b>'+(s.lege?' <span class="lg" style="font-size:11px">'+esc(s.lege)+'</span>':'')+(s.url?' <a href="'+esc(s.url)+'" target="_blank" style="font-size:11.5px">sursă</a>':'')+'</div>').join("")||'<div style="color:var(--muted);font-size:12px">Fără surse.</div>';
+    return '<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px">'+convTag+'<span style="font-size:12px;color:var(--muted);margin-left:auto">'+badge+'</span></div><div style="font-size:14px;color:var(--ink);line-height:1.5;margin-bottom:10px;word-break:break-word">'+esc(it.q)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">'+srcs+'</div></div>';
   }).join("");
 }
-function buildAuditAll(items){ let s="SPETA — Source Audit\n"+new Date().toLocaleString("ro-RO")+"\n\n"; (items||[]).forEach(it=>{ s+="["+(modLabels[it.modul]||it.modul)+"] "+(it.created_at?new Date(it.created_at).toLocaleString("ro-RO"):"")+"\nÎntrebare: "+(it.input||"")+"\nÎncredere: "+(it.incredere||"—")+"\nSurse:\n"; (it.sources||[]).forEach(x=>s+="  - "+x.articol+" "+(x.url||"")+"\n"); s+="\n"; }); s+="SPETA — instrument de asistență."; return s; }
-function exportAudit(){ if(!lastAudit.length){ toast("Nimic de exportat"); return; } downloadText("speta-audit-complet-"+Date.now()+".txt", buildAuditAll(lastAudit)); }
+function auditExportText(){
+  const items=auditItems();
+  const scopeLabel = auditSel==="all" ? "toate conversațiile" : ((auditConvos.find(c=>String(c.id)===String(auditSel))||{}).title||"conversație");
+  let s="SPETA — Source Audit ("+scopeLabel+")\n"+new Date().toLocaleString("ro-RO")+"\n\n";
+  items.forEach(it=>{ s+=(auditSel==="all"?("["+it.conv+"] "):"")+"Întrebare: "+it.q+"\nÎncredere: "+(it.incredere||"—")+"\nSurse:\n"; (it.sources||[]).forEach(x=>s+="  - "+x.articol+(x.lege?" · "+x.lege:"")+" "+(x.url||"")+"\n"); s+="\n"; });
+  s+="SPETA — instrument de asistență."; return s;
+}
+function exportAudit(){ if(!auditItems().length){ toast("Nimic de exportat"); return; } downloadText("speta-audit-"+Date.now()+".txt", auditExportText()); }
 
 /* ---------- KNOWLEDGE BASE ---------- */
 function chunkText(t){
